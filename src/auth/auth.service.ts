@@ -68,4 +68,8 @@ export class AuthService {
       token,
     };
   }
+
+  async profile({ cedula, role }: { cedula: string; role: number }) {
+    return await this.usersService.findOneByCedula(cedula);
+  }
 }

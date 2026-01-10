@@ -27,7 +27,7 @@ export class User {
   password: string;
 
   @DeleteDateColumn()
-  delatedAt: Date;
+  deletedAt: Date;
 
   @ManyToOne(() => Roles, (role) => role.users, {
     eager: true,
