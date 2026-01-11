@@ -24,7 +24,7 @@ export class SalesService {
     createSaleDto: CreateSaleDto,
     user: { sub: number; cedula: string; role: string },
   ) {
-    console.log('Usuario del JWT:', user);
+    console.log('Usuario:', user);
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -105,13 +105,13 @@ export class SalesService {
         user: { id: user.sub },
         saleDetails: saleDetails,
       });
-      console.log(user.sub);
 
       const savedSale = await queryRunner.manager.save(sale);
       await queryRunner.commitTransaction();
+      const finalSale = await this.findOne(savedSale.id);
       return {
         message: 'Venta realizada con exito',
-        sale: await this.findOne(savedSale.id),
+        data: finalSale,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -122,19 +122,25 @@ export class SalesService {
   }
 
   async findAll() {
-    return await this.dataSource.getRepository(Sale).find({
-      relations: [
-        'client',
-        'user', // Ahora sí funcionará porque es ManyToOne
-        'saleDetails', // Asegúrate que coincida con el nombre en la Entity
-        'saleDetails.product',
-      ],
+    const sales = await this.dataSource.getRepository(Sale).find({
+      relations: ['client', 'user', 'saleDetails', 'saleDetails.product'],
       order: { createdAt: 'DESC' },
     });
+
+    return {
+      message: 'Ventas listadas correctamente',
+      data: sales,
+    };
   }
   async findAllpaymentMethod() {
-    return await this.paymentMethodRepository.find();
+    const paymentMethods = await this.paymentMethodRepository.find();
+
+    return {
+      message: 'Metodos de pago listados correctamente',
+      data: paymentMethods,
+    };
   }
+
   async findOne(id: number) {
     const sale = await this.dataSource.getRepository(Sale).findOne({
       where: { id },
@@ -148,9 +154,12 @@ export class SalesService {
     });
 
     if (!sale) {
-      throw new NotFoundException(`La venta con ID ${id} no existe`);
+      throw new NotFoundException(`La venta no existe`);
     }
 
-    return sale;
+    return {
+      message: 'Venta encontrada',
+      data: sale,
+    };
   }
 }

@@ -27,17 +27,29 @@ export class ClientsService {
     profile.currentDebt = 0;
     profile.isActive = true;
     client.creditProfile = profile;
-    return await this.clientRepository.save(client);
+    const savedClient = await this.clientRepository.save(client);
+    return {
+      message: 'Cliente creado correctamente',
+      data: savedClient,
+    };
   }
 
-  findAll() {
-    return this.clientRepository.find({
+  async findAll() {
+    const AllClients = await this.clientRepository.find({
       relations: ['creditProfile'],
     });
+    return {
+      message: 'Clientes listados correctamente',
+      data: AllClients,
+    };
   }
 
-  findByOne(id: number) {
-    return this.findOne(id);
+  async findByOne(id: number) {
+    const OneClient = await this.findOne(id);
+    return {
+      message: 'Cliente listado correctamente',
+      data: OneClient,
+    };
   }
 
   async update(id: number, updateClientDto: UpdateClientDto) {
@@ -48,7 +60,10 @@ export class ClientsService {
         updateClientDto,
       );
       const saveClient = await this.clientRepository.save(updateClient);
-      return saveClient;
+      return {
+        message: 'Cliente actualizado correctamente',
+        data: saveClient,
+      };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -79,8 +94,12 @@ export class ClientsService {
     const updateProfile =
       await this.clientCreditProfileRepository.save(profile);
     return {
-      Deuda: updateProfile.currentDebt,
-      CreditoDisponible: updateProfile.creditLimit - updateProfile.currentDebt,
+      message: 'Abono realizado con exito',
+      data: {
+        Deuda: updateProfile.currentDebt,
+        CreditoDisponible:
+          updateProfile.creditLimit - updateProfile.currentDebt,
+      },
     };
   }
   private async findOne(id: number) {

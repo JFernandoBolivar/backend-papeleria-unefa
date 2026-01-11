@@ -39,7 +39,9 @@ export class AuthService {
       phone,
       lastname,
     });
-    return 'Registro exitoso';
+    return {
+      message: 'Registro exitoso',
+    };
   }
 
   async login({ cedula, password }: LoginDto) {
@@ -51,10 +53,6 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Contraseña incorrecta');
     }
-    // if (!bcryptjs.compareSync(password, user.password)) {
-    //   throw n
-    // ew UnauthorizedException('Contraseña incorrecta');
-    // }
 
     const payload = {
       sub: user.id,
@@ -71,6 +69,10 @@ export class AuthService {
   }
 
   async profile({ cedula, role }: { cedula: string; role: string }) {
-    return await this.usersService.findOneByCedula(cedula);
+    const Profile = await this.usersService.findOneByCedula(cedula);
+    return {
+      message: 'Perfil encontrado',
+      data: Profile,
+    };
   }
 }

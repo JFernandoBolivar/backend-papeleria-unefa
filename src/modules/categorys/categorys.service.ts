@@ -16,16 +16,29 @@ export class CategorysService {
       ...createCategoryDto,
       name: createCategoryDto.name.toUpperCase().trim(),
     };
-    return await this.categoryRepo.save(categoryData);
+    const createCategory = await this.categoryRepo.save(categoryData);
+
+    return {
+      message: 'Categoria creada correctamente',
+      data: createCategory,
+    };
   }
 
   async findAll() {
-    return await this.categoryRepo.find();
+    const categories = await this.categoryRepo.find();
+
+    return {
+      message: 'Categorias listadas correctamente',
+      data: categories,
+    };
   }
 
   async findByOne(id: number) {
     const OneCategory = await this.findOne(id);
-    return OneCategory;
+    return {
+      message: 'Categoria listada correctamente',
+      data: OneCategory,
+    };
   }
 
   async update(id: number, updateCategoryDto: UpdateCategoryDto) {
@@ -35,12 +48,19 @@ export class CategorysService {
       updateCategoryDto,
     );
     const saveCategory = await this.categoryRepo.save(updateCategory);
-    return saveCategory;
+    return {
+      message: 'Categoria actualizada correctamente',
+      data: saveCategory,
+    };
   }
 
   async remove(id: number) {
     const category = await this.findOne(id);
-    await this.categoryRepo.remove(category);
+    const deleteCategory = await this.categoryRepo.remove(category);
+    return {
+      message: 'Categoria eliminada correctamente',
+      data: deleteCategory,
+    };
   }
 
   private async findOne(id: number) {

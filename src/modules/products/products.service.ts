@@ -29,19 +29,30 @@ export class ProductsService {
         ...createProductDto,
         category,
       });
-      return await this.productRepo.save(product);
+      const saveProduct = await this.productRepo.save(product);
+      return {
+        message: 'Producto creado correctamente',
+        data: saveProduct,
+      };
     } catch {
       throw new BadGatewayException('Error creating Products');
     }
   }
 
   async findAll() {
-    return await this.productRepo.find();
+    const products = await this.productRepo.find();
+    return {
+      message: 'Productos listados correctamente',
+      data: products,
+    };
   }
 
   async findOneBy(id: number) {
     const Oneproduct = await this.findOne(id);
-    return Oneproduct;
+    return {
+      message: 'Producto listado correctamente',
+      data: Oneproduct,
+    };
   }
 
   async update(id: number, updateProductDto: UpdateProductDto) {
@@ -52,7 +63,10 @@ export class ProductsService {
         updateProductDto,
       );
       const saveProduct = await this.productRepo.save(updateProduct);
-      return saveProduct;
+      return {
+        message: 'Producto actualizado correctamente',
+        data: saveProduct,
+      };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
