@@ -13,7 +13,7 @@ async function bootstrap() {
     .addTag('Api`s')
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, documentFactory);
+  SwaggerModule.setup('api/docs', app, documentFactory);
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

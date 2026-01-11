@@ -10,6 +10,8 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { SaleDetail } from './sale-detail.entity';
 import { Client } from 'src/modules/clients/entities/client.entity';
+import { PaymentMethod } from './payment-method.entity';
+
 @Entity('sales')
 export class Sale {
   @PrimaryGeneratedColumn()
@@ -17,8 +19,9 @@ export class Sale {
   @Column('decimal', { precision: 12, scale: 2 })
   total: number;
 
-  @Column()
-  paymentMethod: string;
+  @ManyToOne(() => PaymentMethod, (pm) => pm.sales, { eager: true })
+  @JoinColumn({ name: 'paymentMethodId' })
+  paymentMethod: PaymentMethod;
 
   @OneToMany(() => SaleDetail, (saleDetail) => saleDetail.sale, {
     cascade: true,

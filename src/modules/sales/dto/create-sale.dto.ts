@@ -20,8 +20,8 @@ export class CreateSaleDto {
   @IsNumber()
   clientId: number;
 
-  @IsEnum(['CASH', 'CREDIT'])
-  paymentMethod: string;
+  @IsNumber()
+  paymentMethodId: number;
 
   @IsArray()
   @ValidateNested({ each: true })

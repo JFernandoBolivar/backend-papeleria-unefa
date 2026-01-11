@@ -10,6 +10,7 @@ import { Sale } from './entities/sale.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Product } from '../products/entities/product.entity';
 import { SaleDetail } from './entities/sale-detail.entity';
+import { PaymentMethod } from './entities/payment-method.entity';
 
 @Injectable()
 export class SalesService {
@@ -24,10 +25,22 @@ export class SalesService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const { clientId, paymentMethod, items } = createSaleDto;
+      const { clientId, paymentMethodId, items } = createSaleDto;
       let totalSale = 0;
       const saleDetails: SaleDetail[] = [];
 
+      // validacion del metodo de pago
+      const paymentMethodEntity = await queryRunner.manager.findOne(
+        PaymentMethod,
+        {
+          where: { id: paymentMethodId },
+        },
+      );
+      if (!paymentMethodEntity) {
+        throw new NotFoundException('Método de pago no válido');
+      }
+
+      // validar cliente
       const client = await queryRunner.manager.findOne(Client, {
         where: { id: clientId },
         relations: ['creditProfile'],
@@ -45,20 +58,22 @@ export class SalesService {
           throw new BadRequestException('No hay suficiente stock del producto');
         }
 
-        product.stock -= item.quantity;
-        await queryRunner.manager.save(product);
+        await queryRunner.manager.update(Product, product.id, {
+          stock: product.stock - item.quantity,
+        });
 
         const subtotal = Number(product.price) * item.quantity;
         totalSale += subtotal;
 
-        const detail = new SaleDetail();
-        detail.product = product;
-        detail.quantity = item.quantity;
-        detail.priceAtSale = product.price;
+        const detail = queryRunner.manager.create(SaleDetail, {
+          product: { id: product.id },
+          quantity: item.quantity,
+          priceAtSale: product.price,
+        });
         saleDetails.push(detail);
       }
 
-      if (paymentMethod === 'CREDIT') {
+      if (paymentMethodEntity.name === 'CREDIT') {
         const profile = client.creditProfile;
 
         if (!profile || !profile.isActive) {
@@ -80,11 +95,11 @@ export class SalesService {
       }
 
       const sale = queryRunner.manager.create(Sale, {
-        client,
-        paymentMethod,
         total: totalSale,
-        saleDetails: saleDetails,
+        paymentMethod: { id: paymentMethodId },
+        client: { id: client.id },
         user: { id: user.sub },
+        saleDetails: saleDetails,
       });
       console.log(user.sub);
 
@@ -92,7 +107,7 @@ export class SalesService {
       await queryRunner.commitTransaction();
       return {
         message: 'Venta realizada con exito',
-        sale: savedSale,
+        sale: await this.findOne(savedSale.id),
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
