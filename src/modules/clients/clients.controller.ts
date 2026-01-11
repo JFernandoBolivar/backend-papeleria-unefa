@@ -48,8 +48,8 @@ export class ClientsController {
   @Patch(':id/payment')
   async processPayent(
     @Param('id', ParseIntPipe) id: number,
-    @Body('amount') amount: number,
+    @Body('abono') abono: number,
   ) {
-    return this.clientsService.processPayent(id, amount);
+    return this.clientsService.processPayent(id, abono);
   }
 }

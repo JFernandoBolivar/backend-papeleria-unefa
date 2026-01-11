@@ -4,17 +4,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateSaleDto } from './dto/create-sale.dto';
-import { UpdateSaleDto } from './dto/update-sale.dto';
-import { DataSource } from 'typeorm';
+
+import { DataSource, Repository } from 'typeorm';
 import { Sale } from './entities/sale.entity';
 import { Client } from '../clients/entities/client.entity';
 import { Product } from '../products/entities/product.entity';
 import { SaleDetail } from './entities/sale-detail.entity';
 import { PaymentMethod } from './entities/payment-method.entity';
-
+import { InjectRepository } from '@nestjs/typeorm';
 @Injectable()
 export class SalesService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @InjectRepository(PaymentMethod)
+    private readonly paymentMethodRepository: Repository<PaymentMethod>,
+  ) {}
 
   async create(
     createSaleDto: CreateSaleDto,
@@ -128,7 +132,9 @@ export class SalesService {
       order: { createdAt: 'DESC' },
     });
   }
-
+  async findAllpaymentMethod() {
+    return await this.paymentMethodRepository.find();
+  }
   async findOne(id: number) {
     const sale = await this.dataSource.getRepository(Sale).findOne({
       where: { id },
@@ -146,13 +152,5 @@ export class SalesService {
     }
 
     return sale;
-  }
-
-  update(id: number, updateSaleDto: UpdateSaleDto) {
-    return `This action updates a #${id} sale`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} sale`;
   }
 }

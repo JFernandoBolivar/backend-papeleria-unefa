@@ -57,30 +57,30 @@ export class ClientsService {
     }
   }
 
-  async processPayent(id: number, amount: number) {
+  async processPayent(id: number, abono: number) {
     const profile = await this.clientCreditProfileRepository.findOne({
       where: { client: { id } },
     });
     if (!profile) throw new NotFoundException('Cliente no encontrado');
     if (!profile.isActive)
       throw new BadRequestException('El credito del cliente no esta activo');
-    if (amount <= 0) {
+    if (abono <= 0) {
       throw new BadRequestException('El monto a pagar debe ser mayor a 0');
     }
     const debt = Number(profile.currentDebt);
 
-    if (amount > debt) {
+    if (abono > debt) {
       throw new BadRequestException(
-        `El abono  ($${amount})supera la deuda actual del cliente ($${debt})`,
+        `El abono  ($${abono})supera la deuda actual del cliente ($${debt})`,
       );
     }
 
-    profile.currentDebt = debt - amount;
+    profile.currentDebt = debt - abono;
     const updateProfile =
       await this.clientCreditProfileRepository.save(profile);
     return {
-      newDebet: updateProfile.currentDebt,
-      remainingLimit: updateProfile.creditLimit - updateProfile.currentDebt,
+      Deuda: updateProfile.currentDebt,
+      CreditoDisponible: updateProfile.creditLimit - updateProfile.currentDebt,
     };
   }
   private async findOne(id: number) {

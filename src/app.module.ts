@@ -7,6 +7,7 @@ import { ClientsModule } from './modules/clients/clients.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { QuotesModule } from './modules/quotes/quotes.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { CategorysModule } from './modules/categorys/categorys.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
     SalesModule,
     QuotesModule,
     InventoryModule,
+    CategorysModule,
   ],
 
   providers: [],
