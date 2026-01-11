@@ -1,0 +1,95 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadGatewayException,
+  BadRequestException,
+} from '@nestjs/common';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
+import { Client } from './entities/client.entity';
+import { ClientCreditProfile } from './entities/client-credit-profile.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+@Injectable()
+export class ClientsService {
+  constructor(
+    @InjectRepository(Client) private clientRepository: Repository<Client>,
+    @InjectRepository(ClientCreditProfile)
+    private clientCreditProfileRepository: Repository<ClientCreditProfile>,
+  ) {}
+
+  async create(createClientDto: CreateClientDto) {
+    const { creditLimit, ...personalData } = createClientDto;
+    const client = this.clientRepository.create(personalData);
+    const profile = new ClientCreditProfile();
+    profile.creditLimit = creditLimit || 0;
+    profile.currentDebt = 0;
+    profile.isActive = true;
+    client.creditProfile = profile;
+    return await this.clientRepository.save(client);
+  }
+
+  findAll() {
+    return this.clientRepository.find({
+      relations: ['creditProfile'],
+    });
+  }
+
+  findByOne(id: number) {
+    return this.findOne(id);
+  }
+
+  async update(id: number, updateClientDto: UpdateClientDto) {
+    try {
+      const existClient = await this.findOne(id);
+      const updateClient = this.clientRepository.merge(
+        existClient,
+        updateClientDto,
+      );
+      const saveClient = await this.clientRepository.save(updateClient);
+      return saveClient;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadGatewayException(`Error update cliente with id ${id}`);
+    }
+  }
+
+  async processPayent(id: number, amount: number) {
+    const profile = await this.clientCreditProfileRepository.findOne({
+      where: { client: { id } },
+    });
+    if (!profile) throw new NotFoundException('Cliente no encontrado');
+    if (!profile.isActive)
+      throw new BadRequestException('El credito del cliente no esta activo');
+    if (amount <= 0) {
+      throw new BadRequestException('El monto a pagar debe ser mayor a 0');
+    }
+    const debt = Number(profile.currentDebt);
+
+    if (amount > debt) {
+      throw new BadRequestException(
+        `El abono  ($${amount})supera la deuda actual del cliente ($${debt})`,
+      );
+    }
+
+    profile.currentDebt = debt - amount;
+    const updateProfile =
+      await this.clientCreditProfileRepository.save(profile);
+    return {
+      newDebet: updateProfile.currentDebt,
+      remainingLimit: updateProfile.creditLimit - updateProfile.currentDebt,
+    };
+  }
+  private async findOne(id: number) {
+    const Cliente = await this.clientRepository.findOne({
+      where: { id },
+    });
+    if (!Cliente) {
+      throw new NotFoundException(`Cliente with id ${id} not found`);
+    }
+    return Cliente;
+  }
+}
