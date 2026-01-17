@@ -8,17 +8,14 @@ import {
 } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
-
 import { ActiveUser } from 'src/common/decorators/active-user.decorator';
-import { Role } from 'src/common/enums/role.enum';
 import type { UserActiveInterface } from 'src/common/interfaces/user-active.interface';
-import { Auth } from '../auth/decorators/auth.decorator';
+
 @Controller('sales')
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Post()
-  @Auth(Role.VENDEDOR)
   create(
     @Body() createSaleDto: CreateSaleDto,
     @ActiveUser() user: UserActiveInterface,

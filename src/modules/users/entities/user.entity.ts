@@ -27,6 +27,8 @@ export class User {
 
   @Column({ nullable: false, select: false })
   password: string;
+  @Column({ type: 'text', nullable: true, select: false })
+  refreshTokenHash?: string | null;
 
   @DeleteDateColumn()
   deletedAt: Date;

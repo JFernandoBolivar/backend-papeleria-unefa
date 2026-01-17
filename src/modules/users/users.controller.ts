@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
@@ -10,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
-// import { ApiTags } from '@nestjs/swagger';
+
 import { Role } from 'src/common/enums/role.enum';
 import { Auth } from 'src/modules/auth/decorators/auth.decorator';
 import { ApiBasicAuth } from '@nestjs/swagger';
@@ -20,11 +19,6 @@ import { ApiBasicAuth } from '@nestjs/swagger';
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
-
-  // @Post()
-  // create(@Body() createUserDto: CreateUserDto) {
-  //   return this.usersService.create(createUserDto);
-  // }
 
   @Get()
   findAll() {
@@ -47,5 +41,15 @@ export class UsersController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.remove(id);
+  }
+
+  @Get('trash/all')
+  findAllDeleted() {
+    return this.usersService.findAllDeleted();
+  }
+
+  @Patch('restore/:id')
+  restore(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.restore(id);
   }
 }

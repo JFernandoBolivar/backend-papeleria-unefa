@@ -7,7 +7,7 @@ import { UsersService } from 'src/modules/users/users.service';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login-auth.dto';
 import { JwtService } from '@nestjs/jwt';
-
+import { jwtConstants } from './jwt.constants';
 import * as bcryptjs from 'bcryptjs';
 @Injectable()
 export class AuthService {
@@ -59,15 +59,68 @@ export class AuthService {
       cedula: user.cedula,
       role: user.role.name,
     };
-    const token = await this.jwtService.signAsync(payload);
-    const { password: _, ...userWithoutPassword } = user;
 
+    const accessToken = await this.jwtService.signAsync(payload, {
+      expiresIn: '15m',
+      secret: jwtConstants.secret,
+    });
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      expiresIn: '7d',
+      secret: jwtConstants.refreshSecret,
+    });
+    const salt = await bcryptjs.genSalt(10);
+    const refreshTokenHash = await bcryptjs.hash(refreshToken, salt);
+    await this.usersService.updateRefreshToken(user.id, refreshTokenHash);
     return {
-      cedula: userWithoutPassword.cedula,
-      token,
+      cedula: user.cedula,
+      accessToken,
+      refreshToken,
     };
   }
+  async refreshToken(token: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: jwtConstants.refreshSecret,
+      });
 
+      const user = await this.usersService.findOneWithRefreshToken(payload.sub);
+
+      // Logs de depuración (puedes eliminarlos después)
+      console.log('Usuario encontrado:', user ? 'SÍ' : 'NO');
+      console.log('Hash en BD:', user?.refreshTokenHash ? 'Presente' : 'Nulo');
+
+      if (!user || !user.refreshTokenHash) {
+        throw new UnauthorizedException('Sesión no encontrada o cerrada');
+      }
+
+      const isTokenValid = await bcryptjs.compare(token, user.refreshTokenHash);
+
+      if (!isTokenValid) {
+        throw new UnauthorizedException('Token de refresco inválido');
+      }
+      const newPayload = {
+        sub: user.id,
+        cedula: user.cedula,
+        role: user.role.name,
+      };
+
+      const newAccessToken = await this.jwtService.signAsync(newPayload, {
+        secret: jwtConstants.secret,
+        expiresIn: '15m',
+      });
+
+      return {
+        accessToken: newAccessToken,
+      };
+    } catch (e) {
+      throw new UnauthorizedException('Sesión expirada o inválida');
+    }
+  }
+  async logout(sub: number) {
+    await this.usersService.updateRefreshToken(sub, null);
+    return { message: 'Sesión cerrada correctamente' };
+  }
   async profile({ cedula, role }: { cedula: string; role: string }) {
     const Profile = await this.usersService.findOneByCedula(cedula);
     return {

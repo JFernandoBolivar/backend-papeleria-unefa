@@ -1,26 +1,94 @@
-import { Injectable } from '@nestjs/common';
-import { CreateInventoryDto } from './dto/create-inventory.dto';
-import { UpdateInventoryDto } from './dto/update-inventory.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { InventoryEntry } from './entities/inventory.entity';
+import { StockMovement } from './entities/StockMovement.entity';
+import { MovementCategory } from './entities/moment-category.entity';
+import { Product } from '../products/entities/product.entity';
+import type { CreateInventoryDto } from './dto/create-inventory.dto';
+import type { UserActiveInterface } from 'src/common/interfaces/user-active.interface';
 
 @Injectable()
 export class InventoryService {
-  create(createInventoryDto: CreateInventoryDto) {
-    return 'This action adds a new inventory';
+  constructor(
+    private readonly dataSource: DataSource,
+    @InjectRepository(MovementCategory)
+    private readonly categoryRepo: Repository<MovementCategory>,
+  ) {}
+
+  async registerInventoryTransaction(
+    dto: CreateInventoryDto,
+    user: UserActiveInterface,
+  ) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const { observation, categoryId, items } = dto;
+
+      const category = await queryRunner.manager.findOne(MovementCategory, {
+        where: { id: categoryId },
+      });
+      if (!category) throw new NotFoundException('Categoría no válida');
+
+      const inventoryEntry = queryRunner.manager.create(InventoryEntry, {
+        observation,
+        category,
+        user: { id: user.sub },
+      });
+
+      const movements: StockMovement[] = [];
+
+      for (const item of items) {
+        const productRepo = queryRunner.manager.getRepository(Product);
+        const product = await productRepo.findOneBy({ id: item.productId });
+
+        if (!product) throw new NotFoundException(`Producto  no encontrado`);
+
+        const updatedStock =
+          Number(product.stock) + item.quantity * category.factor;
+
+        if (updatedStock < 0)
+          throw new BadRequestException(
+            `Stock insuficiente para ${product.name}`,
+          );
+
+        await productRepo.save({ id: product.id, stock: updatedStock });
+
+        const movement = queryRunner.manager.create(StockMovement, {
+          product: { id: product.id },
+          quantity: item.quantity,
+          inventoryEntry,
+        });
+        movements.push(movement);
+      }
+
+      inventoryEntry.movements = movements;
+      const savedEntry = await queryRunner.manager.save(inventoryEntry);
+
+      await queryRunner.commitTransaction();
+      return { message: 'Transacción exitosa', id: savedEntry.id };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
-  findAll() {
-    return `This action returns all inventory`;
+  async findAllEntries() {
+    return await this.dataSource.getRepository(InventoryEntry).find({
+      relations: ['user', 'category', 'movements', 'movements.product'],
+      order: { createdAt: 'DESC' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} inventory`;
-  }
-
-  update(id: number, updateInventoryDto: UpdateInventoryDto) {
-    return `This action updates a #${id} inventory`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} inventory`;
+  async findAllCategories() {
+    return await this.categoryRepo.find({ order: { name: 'ASC' } });
   }
 }
